@@ -1,0 +1,106 @@
+version: "3.7"
+
+services:
+     mysql:  
+      image: mysql
+      ports: 
+        - "3306:3306"
+      volumes: 
+        - db-zabbix:/var/lib/mysql:rw
+      environment: 
+        MYSQL_USER: zabbix
+        MYSQL_PASSWORD: Zabbix123
+        MYSQL_ROOT_PASSWORD: YjA0OTYwZDBiN2EwNWFjMTRjZGU3Yjcy
+      command:
+        - --default-authentication-plugin=mysql_native_password
+        - --character-set-server=utf8mb4 
+        - --collation-server=utf8mb4_bin
+      networks: 
+        - network-zabbix 
+     zabbix-java:
+      image: zabbix/zabbix-java-gateway
+      deploy:
+       resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      networks: 
+        - network-zabbix 
+     zabbix-server:
+      image: zabbix/zabbix-server-mysql:centos-5.0-latest 
+      depends_on:
+        - zabbix-java 
+        - mysql
+      ports: 
+        - "10051:10051"
+      environment: 
+        DB_SERVER_HOST: zd_mysql
+        MYSQL_DATABASE: zabbix
+        MYSQL_USER: zabbix
+        MYSQL_PASSWORD: Zabbix123
+        MYSQL_ROOT_PASSWORD: YjA0OTYwZDBiN2EwNWFjMTRjZGU3Yjcy  
+      deploy:
+       resources:
+        limits:
+          cpus: '0.70'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      networks: 
+        - network-zabbix
+     zabbix-web:
+      image: zabbix/zabbix-web-nginx-mysql:centos-5.0-latest
+      depends_on: 
+        - mysql
+        - zabbix-server
+      ports: 
+        - "80:8080"
+      environment: 
+        DB_SERVER_HOST: zd_mysql
+        MYSQL_USER: zabbix
+        MYSQL_PASSWORD: Zabbix123
+        MYSQL_ROOT_PASSWORD: YjA0OTYwZDBiN2EwNWFjMTRjZGU3Yjcy
+        ZBX_SERVER_HOST: zd_zabbix-server
+      deploy:
+       resources:
+        limits:
+          cpus: '0.70'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      networks: 
+        - network-zabbix
+     zabbix-agent:
+      image: zabbix/zabbix-agent
+      depends_on: 
+        - mysql
+        - zabbix-server
+      ports: 
+        - "10052:10052"
+      volumes: 
+        - vol-agent:/var/run
+      environment: 
+        ZBX_HOSTNAME: Zabbix-server   
+        ZBX_SERVER_HOST: zabbix-server-mysql
+      deploy:
+       resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+       mode: global
+      networks: 
+        - network-zabbix  
+volumes:
+  db-zabbix:
+  vol-agent:         
+networks: 
+  network-zabbix:
+       
